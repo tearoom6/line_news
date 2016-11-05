@@ -16,8 +16,6 @@ import urllib2
 YAHOO_JAPAN_HEADLINE_RSS_URL = 'http://headlines.yahoo.co.jp/rss/list'
 LINE_NOTIFY_POST_URL = 'https://notify-api.line.me/api/notify'
 LINE_NOTIFY_BEARER_TOKEN = 'AQECAHgsX4pnmWlePDkEVSEwrUqHDwYd6B3NEs0GqBGZ/ilgRgAAAIowgYcGCSqGSIb3DQEHBqB6MHgCAQAwcwYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAx5CiMZTCnF+S3wxtYCARCARqjdJK983WIScJtuUqAPJM1yxcCLV9Wqaz1H51e9ymCPj3DfJl0XE8t65Z2K3EDTT805Fh4v7pbguMXKTiXBMrXLcXYUyMQ='
-KEYWORDS = ['LINE', u'宇治']
-PERIOD = 1
 
 def decript_by_kms(ciphertext):
   kms = boto3.client('kms')
@@ -73,4 +71,14 @@ def notify_news_to_line(keywords, period):
 
 # Lambda handler
 def lambda_handler(event, context):
-  notify_news_to_line(KEYWORDS, PERIOD)
+  if not 'keywords' in event:
+    raise ValueError('Parameter "keywords" is necessary.')
+  if not 'period' in event:
+    raise ValueError('Parameter "period" is necessary.')
+  if not event['period'].isdigit():
+    raise ValueError('Invalid parameter value "period"')
+
+  keywords = [keyword.strip() for keyword in event['keywords'].split(',')]
+  period = int(event['period'])
+  notify_news_to_line(keywords, period)
+
