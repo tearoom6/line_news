@@ -8,7 +8,7 @@ from dateutil.parser import parse
 from datetime import datetime, timedelta
 import pytz
 import requests
-from lxml import html
+from bs4 import BeautifulSoup
 import feedparser
 import urllib
 import urllib2
@@ -27,8 +27,9 @@ def decript_by_kms(ciphertext):
 
 def rss_url_list():
   page = requests.get(YAHOO_JAPAN_HEADLINE_RSS_URL)
-  tree = html.fromstring(page.content)
-  urls = tree.xpath('//div[@class="rss_listbox"]//a/@href')
+  soup = BeautifulSoup(page.content, 'html.parser')
+  elements = soup.select('div[class=rss_listbox] a')
+  urls = [element.get('href') for element in elements]
   return urls
 
 def rss_news_list(rss_url, from_date):
