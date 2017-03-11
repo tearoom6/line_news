@@ -36,6 +36,7 @@ def rss_news_list(rss_url, from_date):
 
 def search_latest_news(keywords, period):
   hits = []
+  stocked_links = set()
   last_hour = datetime.now(pytz.timezone('Asia/Tokyo')) - timedelta(hours = period)
   url_list = rss_url_list()
   for url in url_list:
@@ -45,7 +46,10 @@ def search_latest_news(keywords, period):
       for keyword in keywords:
         if keyword.lower() in item['title'].lower():
           print ('News found: %s' % item['title']).encode('utf-8')
+          if item['link'] in stocked_links:
+            break
           hits.append(item)
+          stocked_links.add(item['link'])
           break
   return hits
 
