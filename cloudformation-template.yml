@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda to notify news to LINE.
+
+Parameters:
+  FunctionName:
+    Type: String
+    Default: NotifyNewsToLineFunction
+    Description: Lambda Function Name
+  ApiName:
+    Type: String
+    Default: line_news
+    Description: API Gateway API Name
+  LineNotifyBearerTokenKeyAliasName:
+    Type: String
+    Default: LINE_NOTIFY_BEARER_TOKEN
+    Description: LINE Notify Bearer Token Key Alias
+  EncryptedLineNotifyBearerToken:
+    Type: String
+    Description: Encrypted LINE Notify Bearer Token
+    NoEcho: true
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyName: NotifyNewsToLinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - kms:Decrypt
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              Resource: '*'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+  LineNotifyBearerTokenKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: "key-consolepolicy-LineNotifyBearerToken"
+        Statement:
+          - Sid: 'Allow full access of the key'
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+            - kms:*
+            Resource: '*'
+          - Sid: 'Allow use of the key'
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt LambdaExecutionRole.Arn
+            Action:
+            - kms:Encrypt
+            - kms:Decrypt
+            - kms:ReEncrypt
+            - kms:GenerateDataKey*
+            - kms:DescribeKey
+            Resource: '*'
+  LineNotifyBearerTokenKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${LineNotifyBearerTokenKeyAliasName}
+      TargetKeyId: !Ref LineNotifyBearerTokenKey
+  NotifyNewsToLineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref FunctionName
+      Handler: notify_news_to_line.lambda_handler
+      Runtime: python2.7
+      CodeUri: .
+      Timeout: 300
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          ENCRYPTED_LINE_NOTIFY_BEARER_TOKEN: !Ref EncryptedLineNotifyBearerToken
+  ApiGatewayApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref ApiName
+      Description: Notify latest news to LINE.
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayApi
+      ParentId: !GetAtt ApiGatewayApi.RootResourceId
+      PathPart: line_news
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${NotifyNewsToLineFunction.Arn}/invocations
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ApiGatewayApi
+      StageName: prod
+    DependsOn: ApiGatewayMethod
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt NotifyNewsToLineFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayApi}/*/*/*
+    DependsOn: ApiGatewayDeployment
+
+Outputs:
+  NotifyNewsToLineFunction:
+    Value: !Ref NotifyNewsToLineFunction
+  ApiGatewayApi:
+    Value: !Ref ApiGatewayApi

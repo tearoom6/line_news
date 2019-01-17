@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 sys.path.append('./libs')
 
@@ -15,7 +16,7 @@ import urllib2
 
 YAHOO_JAPAN_HEADLINE_RSS_URL = 'http://headlines.yahoo.co.jp/rss/list'
 LINE_NOTIFY_POST_URL = 'https://notify-api.line.me/api/notify'
-LINE_NOTIFY_BEARER_TOKEN = 'AQECAHgsX4pnmWlePDkEVSEwrUqHDwYd6B3NEs0GqBGZ/ilgRgAAAIowgYcGCSqGSIb3DQEHBqB6MHgCAQAwcwYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAyVA8AhWyzmsQUWW0ICARCARulpQf5d+7bBn3nHeYjPpX+TNhfvjrrqpbIoHvuLz+AtdxOpJmwJAvRfXZnk5oE0QiVpD53eG7I3RiCtXlIdGkGNiVfQvQE='
+LINE_NOTIFY_BEARER_TOKEN = os.environ['ENCRYPTED_LINE_NOTIFY_BEARER_TOKEN']
 
 def decript_by_kms(ciphertext):
   kms = boto3.client('kms')
